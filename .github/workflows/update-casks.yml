@@ -39,7 +39,8 @@ jobs:
             livecheck_output=$(brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1)
             echo "$livecheck_output"
             
-            if echo "$livecheck_output" | grep -qE "(newer version|is outdated)"; then
+            # Check if output contains version upgrade pattern (e.g., "0.1.3 ==> 0.2.0")
+            if echo "$livecheck_output" | grep -q "==>"; then
               echo "Update available for $cask_name"
               
               # Use bump-cask-pr with write-only flag
@@ -60,8 +61,3 @@ jobs:
           else
             git push origin main
           fi
-      
-      - name: Cleanup tap
-        if: always()
-        run: |
-          brew untap bdeb1337/tap 2>/dev/null || true
