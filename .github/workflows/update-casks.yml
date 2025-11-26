@@ -22,17 +22,35 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Tap this repository
+        run: |
+          brew tap bdeb1337/tap "$GITHUB_WORKSPACE"
+
       - name: Update Casks
         run: |
-          brew tap homebrew/livecheck 2>/dev/null || true
-          
           for cask_file in Casks/*.rb; do
             cask_name=$(basename "$cask_file" .rb)
-            if brew livecheck --cask "$PWD/$cask_file" | grep -q "newer version"; then
-              brew bump-cask-pr --write-only "$cask_name" && \
-              git add "$cask_file" && \
-              git commit -m "chore: auto-update $cask_name" || true
+            echo "Checking bdeb1337/tap/$cask_name..."
+            
+            # Check if update is available
+            if brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1 | grep -q "newer version"; then
+              echo "Update available for $cask_name"
+              
+              # Use bump-cask-pr with write-only flag
+              if brew bump-cask-pr --write-only --no-audit "bdeb1337/tap/$cask_name"; then
+                git add "$cask_file"
+                git commit -m "chore: auto-update $cask_name" || true
+              else
+                echo "Failed to bump $cask_name"
+              fi
+            else
+              echo "No update available for $cask_name"
             fi
           done
           
-          git push origin main || echo "No updates to push"
+          # Push changes if any
+          if git diff --cached --quiet; then
+            echo "No updates to push"
+          else
+            git push origin main
+          fi
