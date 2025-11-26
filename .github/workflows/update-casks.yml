@@ -1,0 +1,38 @@
+name: Auto-update Casks (Direct)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  update-casks:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update Casks
+        run: |
+          brew tap homebrew/livecheck 2>/dev/null || true
+          
+          for cask_file in Casks/*.rb; do
+            cask_name=$(basename "$cask_file" .rb)
+            if brew livecheck --cask "$PWD/$cask_file" | grep -q "newer version"; then
+              brew bump-cask-pr --write-only "$cask_name" && \
+              git add "$cask_file" && \
+              git commit -m "chore: auto-update $cask_name" || true
+            fi
+          done
+          
+          git push origin main || echo "No updates to push"
