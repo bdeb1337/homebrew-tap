@@ -1,4 +1,4 @@
-name: Auto-update Casks (Direct)
+name: Automatically brew bump-cask-pr
 
 on:
   workflow_dispatch:
@@ -24,8 +24,9 @@ jobs:
 
       - name: Tap this repository
         run: |
-          # Untap if already tapped, then tap from local path
-          brew untap bdeb1337/tap 2>/dev/null || true
+          # Remove tap directory if it exists to avoid conflicts
+          rm -rf "$(brew --repo)/Library/Taps/bdeb1337/homebrew-tap" 2>/dev/null || true
+          # Tap from local path
           brew tap bdeb1337/tap "$GITHUB_WORKSPACE"
 
       - name: Update Casks
@@ -34,8 +35,11 @@ jobs:
             cask_name=$(basename "$cask_file" .rb)
             echo "Checking bdeb1337/tap/$cask_name..."
             
-            # Check if update is available
-            if brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1 | grep -q "newer version"; then
+            # Check if update is available with verbose output
+            livecheck_output=$(brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1)
+            echo "$livecheck_output"
+            
+            if echo "$livecheck_output" | grep -qE "(newer version|is outdated)"; then
               echo "Update available for $cask_name"
               
               # Use bump-cask-pr with write-only flag
@@ -56,3 +60,8 @@ jobs:
           else
             git push origin main
           fi
+      
+      - name: Cleanup tap
+        if: always()
+        run: |
+          brew untap bdeb1337/tap 2>/dev/null || true
