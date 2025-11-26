@@ -45,8 +45,8 @@ jobs:
             if echo "$livecheck_output" | grep -q "==>"; then
               echo "Update available for $cask_name"
               
-              # Extract the new version from livecheck output
-              new_version=$(echo "$livecheck_output" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')
+              # Extract the new version from the line containing "==>"
+              new_version=$(echo "$livecheck_output" | grep "==>" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')
               echo "New version: $new_version"
               
               # Use bump-cask-pr with write-only flag and version
