@@ -33,21 +33,22 @@ jobs:
 
       - name: Update Casks
         run: |
-          set -e  # Exit on error
           for cask_file in Casks/*.rb; do
             cask_name=$(basename "$cask_file" .rb)
             echo "Checking bdeb1337/tap/$cask_name..."
             
             # Check if update is available with verbose output
-            livecheck_output=$(brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1)
+            livecheck_output=$(brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1 || true)
             echo "$livecheck_output"
             
             # Check if output contains version upgrade pattern (e.g., "0.1.3 ==> 0.2.0")
             if echo "$livecheck_output" | grep -q "==>"; then
               echo "Update available for $cask_name"
               
-              # Extract the new version from the line containing "==>"
-              new_version=$(echo "$livecheck_output" | grep "==>" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')
+              # Extract the new version from the line containing "==>" only
+              arrow_line=$(echo "$livecheck_output" | grep "==>")
+              echo "DEBUG: Arrow line: '$arrow_line'"
+              new_version=$(echo "$arrow_line" | awk '{print $NF}')
               echo "DEBUG: Extracted version: '$new_version'"
               
               # Check if version was extracted
@@ -58,11 +59,12 @@ jobs:
               
               # Use bump-cask-pr with write-only flag and version
               echo "Running: brew bump-cask-pr --write-only --no-audit --version=$new_version bdeb1337/tap/$cask_name"
-              if brew bump-cask-pr --write-only --no-audit --version="$new_version" "bdeb1337/tap/$cask_name"; then
+              if brew bump-cask-pr --write-only --no-audit --version="$new_version" "bdeb1337/tap/$cask_name" 2>&1; then
                 git add "$cask_file"
                 git commit -m "chore: auto-update $cask_name to $new_version" || true
               else
                 echo "Failed to bump $cask_name"
+                continue
               fi
             else
               echo "No update available for $cask_name"
@@ -70,8 +72,4 @@ jobs:
           done
           
           # Push changes if any
-          if git diff --cached --quiet; then
-            echo "No updates to push"
-          else
-            git push origin main
-          fi
+          git push origin main || echo "No updates to push"
