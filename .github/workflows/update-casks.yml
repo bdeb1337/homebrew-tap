@@ -33,6 +33,7 @@ jobs:
 
       - name: Update Casks
         run: |
+          set -e  # Exit on error
           for cask_file in Casks/*.rb; do
             cask_name=$(basename "$cask_file" .rb)
             echo "Checking bdeb1337/tap/$cask_name..."
@@ -47,9 +48,16 @@ jobs:
               
               # Extract the new version from the line containing "==>"
               new_version=$(echo "$livecheck_output" | grep "==>" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')
-              echo "New version: $new_version"
+              echo "DEBUG: Extracted version: '$new_version'"
+              
+              # Check if version was extracted
+              if [ -z "$new_version" ]; then
+                echo "ERROR: Failed to extract version from livecheck output"
+                continue
+              fi
               
               # Use bump-cask-pr with write-only flag and version
+              echo "Running: brew bump-cask-pr --write-only --no-audit --version=$new_version bdeb1337/tap/$cask_name"
               if brew bump-cask-pr --write-only --no-audit --version="$new_version" "bdeb1337/tap/$cask_name"; then
                 git add "$cask_file"
                 git commit -m "chore: auto-update $cask_name to $new_version" || true
