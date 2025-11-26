@@ -37,18 +37,18 @@ jobs:
             cask_name=$(basename "$cask_file" .rb)
             echo "Checking bdeb1337/tap/$cask_name..."
             
-            # Check if update is available with verbose output
-            livecheck_output=$(brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1 || true)
+            # Check if update is available - strip ANSI codes from output
+            livecheck_output=$(brew livecheck --cask "bdeb1337/tap/$cask_name" 2>&1 | sed 's/\x1b\[[0-9;]*m//g')
             echo "$livecheck_output"
             
             # Check if output contains version upgrade pattern (e.g., "0.1.3 ==> 0.2.0")
             if echo "$livecheck_output" | grep -q "==>"; then
               echo "Update available for $cask_name"
               
-              # Extract the new version from the line containing "==>" only
+              # Extract the new version and strip any non-version characters
               arrow_line=$(echo "$livecheck_output" | grep "==>")
               echo "DEBUG: Arrow line: '$arrow_line'"
-              new_version=$(echo "$arrow_line" | awk '{print $NF}')
+              new_version=$(echo "$arrow_line" | awk '{print $NF}' | tr -cd '0-9.')
               echo "DEBUG: Extracted version: '$new_version'"
               
               # Check if version was extracted
@@ -59,7 +59,7 @@ jobs:
               
               # Use bump-cask-pr with write-only flag and version
               echo "Running: brew bump-cask-pr --write-only --no-audit --version=$new_version bdeb1337/tap/$cask_name"
-              if brew bump-cask-pr --write-only --no-audit --version="$new_version" "bdeb1337/tap/$cask_name" 2>&1; then
+              if brew bump-cask-pr --write-only --no-audit --version="$new_version" "bdeb1337/tap/$cask_name"; then
                 git add "$cask_file"
                 git commit -m "chore: auto-update $cask_name to $new_version" || true
               else
