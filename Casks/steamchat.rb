@@ -1,6 +1,6 @@
 cask "steamchat" do
-  version "0.1.3"
-  sha256 "ec20ed2930c9081afce00c4fb7d6707a02acef4c45345d4a7e57631a4548d181"
+  version "0.2.0"
+  sha256 "c682112da6a392898400b97d66ae1fa30ed09383b1be1dcd110d47b0bc8859f0"
 
   url "https://github.com/bdeb1337/steamchat/releases/download/v#{version}/steamchat-#{version}-universal.dmg"
   name "steamchat"
