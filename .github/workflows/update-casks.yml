@@ -24,6 +24,8 @@ jobs:
 
       - name: Tap this repository
         run: |
+          # Untap if already tapped, then tap from local path
+          brew untap bdeb1337/tap 2>/dev/null || true
           brew tap bdeb1337/tap "$GITHUB_WORKSPACE"
 
       - name: Update Casks
