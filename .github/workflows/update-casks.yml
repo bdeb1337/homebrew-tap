@@ -24,10 +24,12 @@ jobs:
 
       - name: Tap this repository
         run: |
-          # Remove tap directory if it exists to avoid conflicts
-          rm -rf "$(brew --repo)/Library/Taps/bdeb1337/homebrew-tap" 2>/dev/null || true
-          # Tap from local path
-          brew tap bdeb1337/tap "$GITHUB_WORKSPACE"
+          tap_path="$(brew --repo)/Library/Taps/bdeb1337"
+          mkdir -p "$tap_path"
+          # Remove if exists (whether file, directory, or symlink)
+          rm -rf "$tap_path/homebrew-tap" 2>/dev/null || true
+          # Create symlink instead of directory
+          ln -s "$GITHUB_WORKSPACE" "$tap_path/homebrew-tap"
 
       - name: Update Casks
         run: |
@@ -43,10 +45,14 @@ jobs:
             if echo "$livecheck_output" | grep -q "==>"; then
               echo "Update available for $cask_name"
               
-              # Use bump-cask-pr with write-only flag
-              if brew bump-cask-pr --write-only --no-audit "bdeb1337/tap/$cask_name"; then
+              # Extract the new version from livecheck output
+              new_version=$(echo "$livecheck_output" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')
+              echo "New version: $new_version"
+              
+              # Use bump-cask-pr with write-only flag and version
+              if brew bump-cask-pr --write-only --no-audit --version="$new_version" "bdeb1337/tap/$cask_name"; then
                 git add "$cask_file"
-                git commit -m "chore: auto-update $cask_name" || true
+                git commit -m "chore: auto-update $cask_name to $new_version" || true
               else
                 echo "Failed to bump $cask_name"
               fi
